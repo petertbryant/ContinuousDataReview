@@ -5,11 +5,11 @@ library(googleVis)
 
 #runApp("T:/TempTrends/Check_shinyapp/",host='0.0.0.0',port=3169)
 
-slu <- read.csv('data/R_lookup.csv', stringsAsFactors = FALSE)
-slu$TimeD <- as.POSIXct(strptime(slu$TimeD, format = '%Y-%m-%d %H:%M:%S'))
-slu$TimeR <- as.POSIXct(strptime(slu$TimeR, format = '%Y-%m-%d %H:%M:%S'))
-slu$SampledD <- as.POSIXct(strptime(slu$SampledD, format = '%Y-%m-%d %H:%M:%S'))
-slu$SampledR <- as.POSIXct(strptime(slu$SampledR, format = '%Y-%m-%d %H:%M:%S'))
+# slu <- read.csv('data/R_lookup.csv', stringsAsFactors = FALSE)
+# slu$TimeD <- as.POSIXct(strptime(slu$TimeD, format = '%Y-%m-%d %H:%M:%S'))
+# slu$TimeR <- as.POSIXct(strptime(slu$TimeR, format = '%Y-%m-%d %H:%M:%S'))
+# slu$SampledD <- as.POSIXct(strptime(slu$SampledD, format = '%Y-%m-%d %H:%M:%S'))
+# slu$SampledR <- as.POSIXct(strptime(slu$SampledR, format = '%Y-%m-%d %H:%M:%S'))
 
 all_cols <- c(rep('red',4), 
               "black", "#FF9B4C", "#7277C1", "#998B6B", 
@@ -25,7 +25,7 @@ names(all_flls) <- as.vector(outer(c('A','B','C','E'), c('FALSE','TRUE',"NA"),
 shinyServer(function(input, output, session) {
   output$selectStation <- renderUI({
     selectInput("selectStation", label = h3("Select Station"),
-                choices = sort(slu$myfiles))  
+                choices = list.files("./data", pattern = "_.Rdata"))  
   })
   
   #   output$selectYear <- renderUI({
@@ -52,17 +52,27 @@ shinyServer(function(input, output, session) {
   #                           input$selectRange[2]))
   #   })
   
+  audit_data_reactive <- reactive({
+    fname_audit <- gsub(".Rdata","AUDIT_INFO.Rdata", paste0('data/', input$selectStation))
+    load(fname_audit)
+    dr_info
+    #ad <- read.csv(fname_audit, stringsAsFactors = FALSE)
+    #ad$AUDIT_DATETIME <- as.POSIXct(strptime(ad$AUDIT_DATETIME, format = '%Y-%m-%d %H:%M:%S'))
+    #ad
+  })
+  
   output$displayAudit <- renderUI({
     #     df <- slu[which(slu$LasarID == input$selectStation 
     #         & slu$Year == input$selectYear),]
-    df <- slu[which(slu$myfiles == input$selectStation),]
-    disp <- data.frame("Source" = c('Audit','Audit','Obs','Obs'),
-                       "Datetime" = c(df$TimeD, df$TimeR, df$SampledD, df$SampledR),
-                       "Result" = c(df$DTemp, df$RTemp, df$ResultD, df$ResultR),
-                       "Grade_result" = c("", "", df$mydgradeD, df$myrgradeR))
-    disp <- disp[order(disp$Datetime),]
-    
-    output$intermediate <- renderDataTable(disp, 
+    df <- audit_data_reactive()
+#     df <- slu[which(slu$myfiles == input$selectStation),]
+#     disp <- data.frame("Source" = c('Audit','Audit','Obs','Obs'),
+#                        "Datetime" = c(df$TimeD, df$TimeR, df$SampledD, df$SampledR),
+#                        "Result" = c(df$DTemp, df$RTemp, df$ResultD, df$ResultR),
+#                        "Grade_result" = c("", "", df$mydgradeD, df$myrgradeR))
+#     disp <- disp[order(disp$Datetime),]
+#     
+    output$intermediate <- renderDataTable(df, 
                                            options = list(paging = FALSE,
                                                           searching = FALSE))
     dataTableOutput("intermediate")
@@ -72,9 +82,11 @@ shinyServer(function(input, output, session) {
     #     fname <- paste0('data/',slu[which(slu$LasarID == input$selectStation & 
     #                    slu$Year == input$selectYear), 'myfiles'])
     fname <- paste0('data/',input$selectStation)
-    data <- read.csv(fname, stringsAsFactors = FALSE)
-    data$Sampled <- as.POSIXct(strptime(data$Sampled, format = '%Y-%m-%d %H:%M:%S'))
-    data
+    load(fname)
+    tmp_data
+#     data <- read.csv(fname, stringsAsFactors = FALSE)
+#     data$DATETIME <- as.POSIXct(strptime(data$DATETIME, format = '%Y-%m-%d %H:%M:%S'))
+#     data
   })
   
   ranges <- reactiveValues(x = NULL, y = NULL)
@@ -101,7 +113,7 @@ shinyServer(function(input, output, session) {
     ltitle <- "Field Audit\nGrade and\nAnomaly Check"
     
     p <- ggplot(data = new_data) + 
-      geom_point(aes( x= Sampled, y = Result, fill = comb_fac,
+      geom_point(aes( x= DATETIME, y = TEMP, fill = comb_fac,
                       col = comb_fac), shape = 21, size = 3) +
       scale_fill_manual(values = flls,
                         name = ltitle,
@@ -112,17 +124,14 @@ shinyServer(function(input, output, session) {
       coord_cartesian(xlim = ranges$x, ylim = ranges$y) 
     #+ xlim(input$selectRange2[1], input$selectRange2[2])
     
-    #         dr_data <- slu[which(slu$LasarID == input$selectStation & 
-    #                                slu$Year == input$selectYear),]
-    dr_data <- slu[which(slu$myfiles == input$selectStation),]
-    
+    dr_data <- audit_data_reactive()
     p <- p + 
-      geom_vline(xintercept = as.numeric(dr_data$TimeD)) +
-      geom_vline(xintercept = as.numeric(dr_data$TimeR)) +
-      geom_point(data = dr_data, aes(x = TimeR, y = RTemp), 
+      geom_vline(xintercept = as.numeric(dr_data[dr_data$COMMENTS == 'deployed','AUDIT_DATETIME'])) +
+      geom_vline(xintercept = as.numeric(dr_data[dr_data$COMMENTS == 'retrieved','AUDIT_DATETIME'])) +
+      geom_point(data = dr_data, aes(x = AUDIT_DATETIME, y = AUDIT_RESULT), 
                  color = 'green', size = 3) +
-      geom_point(data = dr_data, aes(x = TimeD, y = DTemp),
-                 color = 'green', size = 3) +
+#       geom_point(data = dr_data, aes(x = TimeD, y = DTemp),
+#                  color = 'green', size = 3) +
       ggtitle(unique(dr_data$myfiles))
     
     p
