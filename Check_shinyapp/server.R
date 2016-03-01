@@ -1,15 +1,9 @@
 library(shiny)
 library(reshape2)
 library(ggplot2)
-library(googleVis)
+#library(googleVis)
 
 #runApp("T:/TempTrends/Check_shinyapp/",host='0.0.0.0',port=3169)
-
-# slu <- read.csv('data/R_lookup.csv', stringsAsFactors = FALSE)
-# slu$TimeD <- as.POSIXct(strptime(slu$TimeD, format = '%Y-%m-%d %H:%M:%S'))
-# slu$TimeR <- as.POSIXct(strptime(slu$TimeR, format = '%Y-%m-%d %H:%M:%S'))
-# slu$SampledD <- as.POSIXct(strptime(slu$SampledD, format = '%Y-%m-%d %H:%M:%S'))
-# slu$SampledR <- as.POSIXct(strptime(slu$SampledR, format = '%Y-%m-%d %H:%M:%S'))
 
 all_cols <- c(rep('red',4), 
               "black", "#FF9B4C", "#7277C1", "#998B6B", 
@@ -28,30 +22,6 @@ shinyServer(function(input, output, session) {
                 choices = list.files("./data", pattern = "_.Rdata"))  
   })
   
-  #   output$selectYear <- renderUI({
-  #     selectInput("selectYear", "Select Year",
-  #                 choices = unique(slu[which(slu$LasarID == input$selectStation),'Year']))
-  #   })
-  
-  #   output$selectRange <- renderUI({
-  #     new_data <- DataUse()
-  #     
-  #     sliderInput("selectRange", "Select Date Range", 
-  #                 min = min(new_data$Sampled),
-  #                 max = max(new_data$Sampled),
-  #                 value = c(min(new_data$Sampled),
-  #                           max(new_data$Sampled)),
-  #                 timeFormat = "%F %T")
-  #   })
-  #   
-  #   output$selectRange2 <- renderUI({
-  #     sliderInput('selectRange2', "Select Date Range to plot",
-  #                 min = input$selectRange[1],
-  #                 max = input$selectRange[2],
-  #                 value = c(input$selectRange[1],
-  #                           input$selectRange[2]))
-  #   })
-  
   audit_data_reactive <- reactive({
     fname_audit <- gsub(".Rdata","AUDIT_INFO.Rdata", paste0('data/', input$selectStation))
     load(fname_audit)
@@ -62,16 +32,7 @@ shinyServer(function(input, output, session) {
   })
   
   output$displayAudit <- renderUI({
-    #     df <- slu[which(slu$LasarID == input$selectStation 
-    #         & slu$Year == input$selectYear),]
     df <- audit_data_reactive()
-#     df <- slu[which(slu$myfiles == input$selectStation),]
-#     disp <- data.frame("Source" = c('Audit','Audit','Obs','Obs'),
-#                        "Datetime" = c(df$TimeD, df$TimeR, df$SampledD, df$SampledR),
-#                        "Result" = c(df$DTemp, df$RTemp, df$ResultD, df$ResultR),
-#                        "Grade_result" = c("", "", df$mydgradeD, df$myrgradeR))
-#     disp <- disp[order(disp$Datetime),]
-#     
     output$intermediate <- renderDataTable(df, 
                                            options = list(paging = FALSE,
                                                           searching = FALSE))
@@ -79,8 +40,6 @@ shinyServer(function(input, output, session) {
   })
   
   DataUse <- reactive({
-    #     fname <- paste0('data/',slu[which(slu$LasarID == input$selectStation & 
-    #                    slu$Year == input$selectYear), 'myfiles'])
     fname <- paste0('data/',input$selectStation)
     load(fname)
     tmp_data
@@ -105,7 +64,7 @@ shinyServer(function(input, output, session) {
   
   output$plot <- renderPlot({
     new_data <- DataUse()
-    new_data$comb_fac <- as.factor(paste(new_data$field_audit_grade, 
+    new_data$comb_fac <- as.factor(paste(new_data$DQL, 
                                          new_data$anomaly))
     labs <- levels(new_data$comb_fac)
     cols = all_cols[names(all_cols) %in% labs]

@@ -1,7 +1,45 @@
 library(readxl)
 library(plyr)
 
-#Set the data file path for processing
+#This script expects as input an excel file with worksheets named:
+#    SiteMasterInfo
+#    PrePostResults
+#    FieldAuditResults
+#    And a single sheet for each unique logger ID
+#
+#Expected format for SiteMasterInfo:
+#Header info takes up rows 1 through 5 with column names in row 6
+#Columns to include in this exact format:
+#    Logger ID
+#    LASAR ID
+#    Station Description
+#
+#Expected format for PrePostResults:
+#No header info. Column names in row 1.
+#Columns to include in this exact format:
+#    LOGGER ID 
+#    DATA QUALITY LEVEL
+#Column LOGGER ID must at least contain the same logger ids as are in SiteMasterInfo
+#
+#Expected format for FieldAuditResults:
+#No head info. Column names in row 1.
+#Columns to include in this exact format:
+#    LOGGER ID
+#    DATE
+#    TIME
+#    AUDIT RESULT
+#    COMMENTS
+#Column COMMENTS must contain 'deployed' or 'retrieved' as the only text in the field
+#
+#Expected format for worksheets with logger ID as their name:
+#Header infro on rows 1-4. COlumn names in row 5.
+#    DATE
+#    TIME
+#    TEMP
+#    DQL
+#Note: the last column name is DQL because TEMP is contained in row 4 which is a skipped row
+
+#Set the data file path and file that you want to process
 src_file <- '//deqlead02/Vol_Data/Hylawoods/2015/OriginalCopy_HylawoodsSummer2015.xls'
 
 #Set the output location where the shiny app can use it
