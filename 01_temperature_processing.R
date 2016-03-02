@@ -74,6 +74,7 @@ for (i in 1:length(loggers)) {
   
   dr_info <- audits[grep(loggers[i], audits$"LOGGER ID"),c('AUDIT_DATETIME','AUDIT RESULT','COMMENTS')]
   dr_info <- rename(dr_info, c('AUDIT RESULT' = 'AUDIT_RESULT'))
+  dr_info <- as.data.frame(dr_info)
   # Set TRUE FALSE for before and after deployment
   tmp_data$dbf <- ifelse(tmp_data$DATETIME < dr_info[dr_info$COMMENTS == 'deployed',
                                                      'AUDIT_DATETIME'], FALSE, TRUE)
