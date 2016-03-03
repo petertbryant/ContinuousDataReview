@@ -10,6 +10,12 @@ setwd(in_out_path)
 #Save csv file for each fnames data frame
 for (i in 1:length(fnames)) {
   load(fnames[i])
-  write.csv(tmp_data, file = paste0(in_out_path, fnames[i]), row.names = FALSE)
+  if (grepl('AUDIT',fnames[i])) {
+    write.csv(dr_info, file = gsub(".Rdata",".csv",paste0(in_out_path, fnames[i])), 
+              row.names = FALSE)
+  } else {
+    write.csv(tmp_data, file = gsub(".Rdata",".csv",paste0(in_out_path, fnames[i])), 
+            row.names = FALSE)
+  }
 }
 
