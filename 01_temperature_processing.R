@@ -77,10 +77,10 @@ for (i in 1:length(loggers)) {
   dr_info <- as.data.frame(dr_info)
   dr_info <- dr_info[order(dr_info$AUDIT_DATETIME), ]
   # Set TRUE FALSE for before and after deployment
-  tmp_data$dbf <- ifelse(tmp_data$DATETIME < dr_info[which(dr_info$COMMENTS == 'deployed'),
-                                                     'AUDIT_DATETIME'], FALSE, TRUE)
-  tmp_data$raf <- ifelse(tmp_data$DATETIME > dr_info[which(dr_info$COMMENTS == 'retrieved'),
-                                                     'AUDIT_DATETIME'], FALSE, TRUE)
+  tmp_data$dbf <- ifelse(tmp_data$DATETIME < dr_info[1, 'AUDIT_DATETIME'], 
+                         FALSE, TRUE)
+  tmp_data$raf <- ifelse(tmp_data$DATETIME > dr_info[nrow(dr_info), 'AUDIT_DATETIME'], 
+                         FALSE, TRUE)
   
   # get the probe values at the time of the audits  
   deploy_ind <- min(which(tmp_data$dbf))
@@ -93,10 +93,8 @@ for (i in 1:length(loggers)) {
   tmp_data$field_audit_grade <- NA
   
   # calc differences
-  diff.d <- abs(dr_info[which(dr_info$COMMENTS == 'deployed'), 
-                        'AUDIT_RESULT'] - obs.dt$TEMP)
-  diff.r <- abs(dr_info[which(dr_info$COMMENTS == 'retrieved'), 
-                        'AUDIT_RESULT'] - obs.rt$TEMP)
+  diff.d <- abs(dr_info[1, 'AUDIT_RESULT'] - obs.dt$TEMP)
+  diff.r <- abs(dr_info[nrow(dr_info), 'AUDIT_RESULT'] - obs.rt$TEMP)
   
   # deploy grade
   obs.dt$AUDIT_GRADE <- ifelse(is.na(diff.d),"E",
@@ -108,8 +106,6 @@ for (i in 1:length(loggers)) {
                                ifelse(diff.r < 1.51,"A",
                                       ifelse(diff.r < 2.01,"B", "C")))
   
-  obs.dt$COMMENTS <- 'deployed'
-  obs.rt$COMMENTS <- 'retrieved'
   obs.dt$IND <- deploy_ind
   obs.rt$IND <- retrieve_ind
   dr_obs <- rbind(obs.dt[,c('DATETIME','TEMP', 'AUDIT_GRADE', 'IND')], 
@@ -117,12 +113,12 @@ for (i in 1:length(loggers)) {
 
   #Handling of additional audits
   if (nrow(dr_info) > 2) {
-    dr_info_sub <- dr_info[!dr_info$COMMENTS %in% c('deployed','retrieved'),]
-    for (i in 1:nrow(dr_info_sub)) {
+    dr_info_sub <- dr_info[2:(nrow(dr_info) - 1),]
+    for (j in 1:nrow(dr_info_sub)) {
       audit_ind <- which.min(abs(tmp_data$DATETIME - 
-                                   dr_info_sub[i, 'AUDIT_DATETIME']))
+                                   dr_info_sub[j, 'AUDIT_DATETIME']))
       tmp.obs <- tmp_data[audit_ind, c('DATETIME', 'TEMP')]
-      diff.a <- abs(dr_info_sub[i , 'AUDIT_RESULT'] - tmp.obs$TEMP)
+      diff.a <- abs(dr_info_sub[j , 'AUDIT_RESULT'] - tmp.obs$TEMP)
       tmp.obs$AUDIT_GRADE <- ifelse(is.na(diff.a),"E",
                                     ifelse(diff.a < 1.51,"A",
                                            ifelse(diff.a < 2.01,"B", "C")))
@@ -205,8 +201,8 @@ for (i in 1:length(loggers)) {
                           'field_audit_grade', 'bath_grade', 'daily_min', 
                           'daily_max', 'daily_mean', 'daily_diel')]
   
-  yr <- strftime(dr_info[dr_info$COMMENTS == 'deployed', 'AUDIT_DATETIME'], "%Y")
-  lasar <- smi[smi$"Logger ID" == loggers[i], c('LASAR ID', "Station Description")]
+  yr <- strftime(dr_info[1, 'AUDIT_DATETIME'], "%Y")
+  lasar <- smi[which(smi$"Logger ID" == loggers[i]), c('LASAR ID', "Station Description")]
   fname <- paste(yr, loggers[i], lasar$"LASAR ID", lasar$"Station Description", ".Rdata", sep = "_")
   fname <- gsub("/","_",fname)
   
