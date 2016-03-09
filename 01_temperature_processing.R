@@ -40,7 +40,7 @@ library(plyr)
 #Note: the last column name is DQL because TEMP is contained in row 4 which is a skipped row
 
 #Set the data file path and file that you want to process
-src_file <- '//deqlead02/Vol_Data/Hylawoods/2015/OriginalCopy_HylawoodsSummer2015.xls'
+src_file <- '//deqlead02/Vol_Data/Hood River/2012/4R_2012_MFID_LL.xls'
 
 #Set the output location where the shiny app can use it
 save_dir <- '//deqlab1/wqm/Volunteer Monitoring/datamanagement/R/ContinuousDataReview/Check_shinyapp/data'
@@ -75,24 +75,27 @@ for (i in 1:length(loggers)) {
   dr_info <- audits[grep(loggers[i], audits$"LOGGER ID"),c('AUDIT_DATETIME','AUDIT RESULT','COMMENTS')]
   dr_info <- rename(dr_info, c('AUDIT RESULT' = 'AUDIT_RESULT'))
   dr_info <- as.data.frame(dr_info)
+  dr_info <- dr_info[order(dr_info$AUDIT_DATETIME), ]
   # Set TRUE FALSE for before and after deployment
-  tmp_data$dbf <- ifelse(tmp_data$DATETIME < dr_info[dr_info$COMMENTS == 'deployed',
+  tmp_data$dbf <- ifelse(tmp_data$DATETIME < dr_info[which(dr_info$COMMENTS == 'deployed'),
                                                      'AUDIT_DATETIME'], FALSE, TRUE)
-  tmp_data$raf <- ifelse(tmp_data$DATETIME > dr_info[dr_info$COMMENTS == 'retrieved',
+  tmp_data$raf <- ifelse(tmp_data$DATETIME > dr_info[which(dr_info$COMMENTS == 'retrieved'),
                                                      'AUDIT_DATETIME'], FALSE, TRUE)
   
-  # get the probe values at the time of the audit  
-  obs.dt <- tmp_data[min(which(tmp_data$dbf)), c("DATETIME","TEMP")]
+  # get the probe values at the time of the audits  
+  deploy_ind <- min(which(tmp_data$dbf))
+  obs.dt <- tmp_data[deploy_ind, c("DATETIME","TEMP")]
   
-  obs.rt <- tmp_data[max(which(tmp_data$raf)) - 1, c("DATETIME","TEMP")]
+  retrieve_ind <- max(which(tmp_data$raf))
+  obs.rt <- tmp_data[retrieve_ind, c("DATETIME","TEMP")]
   
   # Grading
   tmp_data$field_audit_grade <- NA
   
   # calc differences
-  diff.d <- abs(dr_info[dr_info$COMMENTS == 'deployed', 
+  diff.d <- abs(dr_info[which(dr_info$COMMENTS == 'deployed'), 
                         'AUDIT_RESULT'] - obs.dt$TEMP)
-  diff.r <- abs(dr_info[dr_info$COMMENTS == 'retrieved', 
+  diff.r <- abs(dr_info[which(dr_info$COMMENTS == 'retrieved'), 
                         'AUDIT_RESULT'] - obs.rt$TEMP)
   
   # deploy grade
@@ -100,29 +103,46 @@ for (i in 1:length(loggers)) {
                                ifelse(diff.d < 1.51,"A",
                                       ifelse(diff.d < 2.01,"B", "C")))
   
-  # retrival grade
+  # retrieval grade
   obs.rt$AUDIT_GRADE <- ifelse(is.na(diff.r),"E",
                                ifelse(diff.r < 1.51,"A",
                                       ifelse(diff.r < 2.01,"B", "C")))
   
   obs.dt$COMMENTS <- 'deployed'
   obs.rt$COMMENTS <- 'retrieved'
-  dr_obs <- rbind(obs.dt[,c('DATETIME','TEMP','COMMENTS', 'AUDIT_GRADE')], 
-                  obs.rt[,c('DATETIME','TEMP','COMMENTS', 'AUDIT_GRADE')])
+  obs.dt$IND <- deploy_ind
+  obs.rt$IND <- retrieve_ind
+  dr_obs <- rbind(obs.dt[,c('DATETIME','TEMP', 'AUDIT_GRADE', 'IND')], 
+                  obs.rt[,c('DATETIME','TEMP', 'AUDIT_GRADE', 'IND')])
+
+  #Handling of additional audits
+  if (nrow(dr_info) > 2) {
+    dr_info_sub <- dr_info[!dr_info$COMMENTS %in% c('deployed','retrieved'),]
+    for (i in 1:nrow(dr_info_sub)) {
+      audit_ind <- which.min(abs(tmp_data$DATETIME - 
+                                   dr_info_sub[i, 'AUDIT_DATETIME']))
+      tmp.obs <- tmp_data[audit_ind, c('DATETIME', 'TEMP')]
+      diff.a <- abs(dr_info_sub[i , 'AUDIT_RESULT'] - tmp.obs$TEMP)
+      tmp.obs$AUDIT_GRADE <- ifelse(is.na(diff.a),"E",
+                                    ifelse(diff.a < 1.51,"A",
+                                           ifelse(diff.a < 2.01,"B", "C")))
+      tmp.obs$IND <- audit_ind
+      dr_obs <- rbind(dr_obs, tmp.obs)
+    }
+  }
+  
+  dr_obs <- dr_obs[order(dr_obs$DATETIME), ]
   dr_obs <- rename(dr_obs, c('DATETIME' = "OBS_DATETIME",
                              'TEMP' = 'OBS_RESULT'))
-  dr_info <- merge(dr_info, dr_obs, by = 'COMMENTS')
+  dr_info <- cbind(dr_info, dr_obs)
   
-  # apply the grades 
-  tmp_data[c(which(tmp_data$DATETIME <= dr_info[dr_info$COMMENTS == 'deployed', 
-                                                'AUDIT_DATETIME']), 
-             min(which(tmp_data$dbf))), "field_audit_grade"] <- obs.dt$AUDIT_GRADE
-  #TODO: have field audit grade for second audit end at the audit datetime
-  #this will matter for datasets that have audits that do not coincide with the retrieval
-  tmp_data[which(tmp_data$DATETIME > dr_info[dr_info$COMMENTS == 'deployed', 
-                                             'AUDIT_DATETIME']), 
-           "field_audit_grade"] <- obs.rt$AUDIT_GRADE
-  
+    # apply the grades 
+  for (i in 1:nrow(dr_info)) {
+    start_ind <- ifelse(i == 1, dr_info$IND[1], dr_info$IND[i - 1] + 1)
+    tmp_data[start_ind:dr_info$IND[i], 
+             'field_audit_grade'] <- dr_info[i, 'AUDIT_GRADE']
+  }
+
   #Determine what the DQL from the PrePostResult baths will be
   bath_dql <- unique(ppcheck[grep(loggers[i], ppcheck$"LOGGER ID"),'DATA QUALITY LEVEL'])
   if (length(bath_dql) > 1) {
