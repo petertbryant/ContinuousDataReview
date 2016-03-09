@@ -46,15 +46,15 @@ src_file <- '//deqlead02/Vol_Data/Hood River/2012/4R_2012_MFID_LL.xls'
 save_dir <- '//deqlab1/wqm/Volunteer Monitoring/datamanagement/R/ContinuousDataReview/Check_shinyapp/data'
 
 #Grab the master info sheet that has the logger ids
-smi <- read_excel(src_file, sheet = 'SiteMasterInfo', skip = 5)
+capture.output(smi <- read_excel(src_file, sheet = 'SiteMasterInfo', skip = 5), file = "nul")
 smi <- smi[!is.na(smi$'Logger ID'),]
 
 #Grab the PrePostResults for getting teh bath_dql
-ppcheck <- read_excel(src_file, sheet = 'PrePostResults')
+capture.output(ppcheck <- read_excel(src_file, sheet = 'PrePostResults'), file = "nul")
 ppcheck <- ppcheck[!is.na(ppcheck$'LOGGER ID'),]
 
 #Get the audit sheet which has the deploy and retrieval times as well
-audits <- read_excel(src_file, sheet = 'FieldAuditResults')
+capture.output(audits <- read_excel(src_file, sheet = 'FieldAuditResults'), file = "nul")
 audits <- audits[!is.na(audits$"LOGGER ID"),]
 audits$date_char <- strftime(audits$DATE, format = "%Y-%m-%d", tz = 'GMT')
 audits$time_char <- strftime(audits$TIME, format = '%H:%M:%S', tz ='GMT')
@@ -65,7 +65,9 @@ audits$AUDIT_DATETIME <- as.POSIXct(strptime(audits$datetime, format = "%Y-%m-%d
 loggers <- unique(smi$"Logger ID")
 
 for (i in 1:length(loggers)) {
-  tmp_data <- read_excel(src_file, sheet = as.character(loggers[i]), skip = 4)
+  start.time <- Sys.time()
+  print(paste("Starting logger", loggers[i], start.time))
+  capture.output(tmp_data <- read_excel(src_file, sheet = as.character(loggers[i]), skip = 4), file = "nul")
   tmp_data <- tmp_data[!is.na(tmp_data$TEMP),]
   tmp_data$date_char <- strftime(tmp_data$DATE, format = "%Y-%m-%d", tz = 'GMT')
   tmp_data$time_char <- strftime(tmp_data$TIME, format = '%H:%M:%S', tz ='GMT')
@@ -133,10 +135,10 @@ for (i in 1:length(loggers)) {
   dr_info <- cbind(dr_info, dr_obs)
   
     # apply the grades 
-  for (i in 1:nrow(dr_info)) {
-    start_ind <- ifelse(i == 1, dr_info$IND[1], dr_info$IND[i - 1] + 1)
-    tmp_data[start_ind:dr_info$IND[i], 
-             'field_audit_grade'] <- dr_info[i, 'AUDIT_GRADE']
+  for (k in 1:nrow(dr_info)) {
+    start_ind <- ifelse(k == 1, dr_info$IND[1], dr_info$IND[k - 1] + 1)
+    tmp_data[start_ind:dr_info$IND[k], 
+             'field_audit_grade'] <- dr_info[k, 'AUDIT_GRADE']
   }
 
   #Determine what the DQL from the PrePostResult baths will be
@@ -209,6 +211,10 @@ for (i in 1:length(loggers)) {
   fname_audit <- paste(yr, loggers[i], lasar$"LASAR ID", 
                        lasar$"Station Description", "AUDIT_INFO.Rdata", sep = "_")
   fname_audit <- gsub("/","_",fname_audit)
+  
+  print(fname)
+  print(fname_audit)
+  cat('\n\n')
   
   save(tmp_data, file = paste(save_dir, fname, sep = "/"))
   save(dr_info, file = paste(save_dir, fname_audit, sep = "/"))

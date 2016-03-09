@@ -85,8 +85,7 @@ shinyServer(function(input, output, session) {
     
     dr_data <- audit_data_reactive()
     p <- p + 
-      geom_vline(xintercept = as.numeric(dr_data[dr_data$COMMENTS == 'deployed','AUDIT_DATETIME'])) +
-      geom_vline(xintercept = as.numeric(dr_data[dr_data$COMMENTS == 'retrieved','AUDIT_DATETIME'])) +
+      geom_vline(xintercept = as.numeric(dr_data[,'AUDIT_DATETIME'])) +
       geom_point(data = dr_data, aes(x = AUDIT_DATETIME, y = AUDIT_RESULT), 
                  color = 'green', size = 3) +
 #       geom_point(data = dr_data, aes(x = TimeD, y = DTemp),
