@@ -40,7 +40,7 @@ library(plyr)
 #Note: the last column name is DQL because TEMP is contained in row 4 which is a skipped row
 
 #Set the data file path and file that you want to process
-src_file <- '//deqlead02/Vol_Data/Hood River/2012/4R_2012_MFID_LL.xls'
+src_file <- '//deqlead02/Vol_Data/Hylawoods/2015/OriginalCopy_HylawoodsSummer2015.xls'
 
 #Set the output location where the shiny app can use it
 save_dir <- '//deqlab1/wqm/Volunteer Monitoring/datamanagement/R/ContinuousDataReview/Check_shinyapp/data'

@@ -5,15 +5,15 @@ library(ggplot2)
 
 #runApp("T:/TempTrends/Check_shinyapp/",host='0.0.0.0',port=3169)
 
-all_cols <- c(rep('red',4), 
-              "black", "#FF9B4C", "#7277C1", "#998B6B", 
-              "black", "#FF9B4C", "#7277C1", "#998B6B")
-names(all_cols) <- as.vector(outer(c('A','B','C','E'), c('TRUE','FALSE',"NA"), 
+all_cols <- c(rep('red',5), 
+              "black", "#FF9B4C", "#7277C1", "#998B6B", "#C0C0C0",
+              "black", "#FF9B4C", "#7277C1", "#998B6B", "#C0C0C0")
+names(all_cols) <- as.vector(outer(c('A','B','C','E', "NA"), c('TRUE','FALSE',"NA"), 
                                    paste, sep=" "))
-all_flls <- c("black", "#FF9B4C", "#7277C1", "#998B6B", 
-              "black", "#FF9B4C", "#7277C1", "#998B6B",
-              "black", "#FF9B4C", "#7277C1", "#998B6B")
-names(all_flls) <- as.vector(outer(c('A','B','C','E'), c('FALSE','TRUE',"NA"), 
+all_flls <- c("black", "#FF9B4C", "#7277C1", "#998B6B", "#C0C0C0", 
+              "black", "#FF9B4C", "#7277C1", "#998B6B", "#C0C0C0",
+              "black", "#FF9B4C", "#7277C1", "#998B6B", "#C0C0C0")
+names(all_flls) <- as.vector(outer(c('A','B','C','E', "NA"), c('FALSE','TRUE',"NA"), 
                                    paste, sep=" "))
 
 shinyServer(function(input, output, session) {
