@@ -264,10 +264,10 @@ for (i in seq_along(logchar$log)) {
   
   dploy <- strftime(dr_info[1, 'AUDIT_DATETIME'], "%Y%m%d")
   lasar <- smi[which(smi$Logger_ID == logchar[i,1]), c('LASAR_ID', "Station_Description")]
-  fname <- paste(SubID, logchar[i,1], lasar$LASAR_ID, logchar[i,2], dploy, lasar$Station_Description, ".Rdata", sep = "_")
+  fname <- paste(SubID, lasar$LASAR_ID, logchar[i,1], logchar[i,2], dploy, lasar$Station_Description, ".Rdata", sep = "_")
   fname <- gsub("/","_",fname) # not sure what this is for
   
-  fname_audit <- paste(SubID, logchar[i,1], lasar$"LASAR_ID", logchar[i,2], dploy,  
+  fname_audit <- paste(SubID, lasar$"LASAR_ID", logchar[i,1], logchar[i,2], dploy,  
                        lasar$Station_Description, "AUDIT_INFO.Rdata", sep = "_")
   fname_audit <- gsub("/","_",fname_audit)
   
