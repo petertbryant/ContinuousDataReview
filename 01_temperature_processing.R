@@ -1,5 +1,6 @@
 library(readxl)
 library(plyr)
+
 #This script expects as input an excel file with worksheets named:
 #    SiteMasterInfo
 #    PrePostResults
@@ -44,7 +45,7 @@ library(plyr)
 
 #Set the data file path and file that you want to process
 src_file <- '//deqlead02/Vol_Data/salmon-drift/2015/Fake2SDCWC2015CDO.xls'
-SubID <- 'XXXX' # Enter the submission ID from VolWQDB
+SubID <- '0020' # Enter the submission ID from VolWQDB
 #src_file <- '//deqlead02/Vol_Data/Hylawoods/2015/Hyla4R.xls'
 #SubID <- 'YYYY' # Enter the submission ID from VolWQDB
 
@@ -55,7 +56,11 @@ save_dir <- '//deqlab1/wqm/Volunteer Monitoring/datamanagement/R/ContinuousDataR
 #Grab the master info sheet that has the logger ids
 capture.output(smi <- read_excel(src_file, sheet = 'SiteMasterInfo', skip = 5), file = "nul")
 smi <- smi[!is.na(smi$Logger_ID),]
+smi <- rename(smi, replace = c('Deployment_Depth_(meters)' = 'Depth_m'))
 smi$Logger_ID <- gsub("\\..*","",smi$Logger_ID) # get rid of extraneous .000000
+smi$Depth_m <- gsub("\\..*","",smi$Depth_m)
+save(smi, file = paste(save_dir, paste0(SubID,"_SiteMasterInfo.RData"), sep = "/"))
+
 
 #Grab the PrePostResults for getting teh bath_dql
 capture.output(ppcheck <- read_excel(src_file, sheet = 'PrePostResults'), file = "nul")
@@ -75,7 +80,8 @@ logchar<-unique(audits[,c('LOGGER_ID','PARAMETER')])
 names(logchar)<-c('log','char')
 
 # Load the QC criteria for continuous data
-ConQC <- read.csv('//deqlab1/wqm/Volunteer Monitoring/datamanagement/R/ContinuousDataReview/ConQC.csv')
+load('//deqlab1/wqm/Volunteer Monitoring/datamanagement/R/ContinuousDataReview/ConQC.RData')
+#ConQC <- read.csv('//deqlab1/wqm/Volunteer Monitoring/datamanagement/R/ConQC.csv')
 
 
 #Pull out the logger ids for looping through
@@ -84,9 +90,9 @@ ConQC <- read.csv('//deqlab1/wqm/Volunteer Monitoring/datamanagement/R/Continuou
 for (i in seq_along(logchar$log)) {
   start.time <- Sys.time()
   print(paste("Starting file", i, "of", nrow(logchar), "=", logchar[i,1], logchar[i,2], start.time))
-  capture.output(tmp_data <- read_excel(src_file, sheet = logchar[i,1], skip = 4), file = "nul")
+  capture.output(tmp_data <- read_excel(src_file, sheet = logchar[[i,1]], skip = 4), file = "nul")
   tmp_data <- tmp_data[,c(1,2,grep(paste0("^",logchar[i,2],"_"),names(tmp_data), ignore.case = TRUE))]
-  tmp_data$charid <- logchar[i,2]
+  tmp_data$charid <- logchar$char[i]
   
   names(tmp_data) <- c("DATE","TIME","r","dql", "charid")
   tmp_data <- tmp_data[!is.na(tmp_data$r),]
@@ -175,14 +181,13 @@ for (i in seq_along(logchar$log)) {
   # apply the grades 
   for (k in 1:nrow(dr_info)) {
     start_ind <- ifelse(k == 1, dr_info$IND[1], dr_info$IND[k - 1] + 1)
-    tmp_data[start_ind:dr_info$IND[k], 
-             'field_audit_grade'] <- dr_info[k, 'AUDIT_GRADE']
+    grade <- max(c(dr_info$AUDIT_GRADE[k-1],dr_info$AUDIT_GRADE[k]))# assign lower grade
+    tmp_data[start_ind:dr_info$IND[k]-1, 
+             'field_audit_grade'] <- grade
+    tmp_data[dr_info$IND[k], 'field_audit_grade'] <- dr_info[k, 'AUDIT_GRADE']
   }
   
   #Determine what the DQL from the PrePostResult baths will be
-  ppcheck[which((ppcheck$LOGGER_ID %in% logchar$log[i]) && (ppcheck$PARAMETER %in% logchar$char[i])),'DATA_QUALITY_LEVEL']
-  ppcheck[ which(ppcheck$LOGGER_ID == logchar$log[1]) & which(ppcheck$PARAMETER == logchar$char[1]),]
-  
   bath_dql <- ppcheck[grep(logchar[i,1], ppcheck$LOGGER_ID),c('LOGGER_ID', 'PARAMETER', 'DATA_QUALITY_LEVEL')] # this needs to be charid specific too
   bath_dql <- as.vector(unique(bath_dql[which(bath_dql$PARAMETER == logchar$char[i]),'DATA_QUALITY_LEVEL']))
   
@@ -206,6 +211,8 @@ for (i in seq_along(logchar$log)) {
   
   
   # Calculate the daily min and maximums
+    # Final daily statistics should be calculated after the data has been graded...
+      #these are preliminary used for anomaly considerations
   max <- aggregate(r~date, data=tmp_data, FUN=max)
   colnames(max)[2] <- "daily_max"
   min <- aggregate(r~date, data=tmp_data, FUN=min)
@@ -259,12 +266,13 @@ for (i in seq_along(logchar$log)) {
   
   #Just keep the fields we want to persits
   tmp_data <- tmp_data[,c('DATETIME', 'charid','r', 'dql','rDQL', 'anomaly', 
-                          'field_audit_grade', 'bath_grade', 'daily_min', 
+                          'field_audit_grade', 'bath_grade','date', 'daily_min', 
                           'daily_max', 'daily_mean', 'daily_diel')]
   
   dploy <- strftime(dr_info[1, 'AUDIT_DATETIME'], "%Y%m%d")
-  lasar <- smi[which(smi$Logger_ID == logchar[i,1]), c('LASAR_ID', "Station_Description")]
-  fname <- paste(SubID, lasar$LASAR_ID, logchar[i,1], logchar[i,2], dploy, lasar$Station_Description, ".Rdata", sep = "_")
+  lasar <- smi[which(smi$Logger_ID == logchar[i,1]), c('LASAR_ID', 'Station_Description', 'Depth_m' )]
+  fname <- paste(SubID, lasar$LASAR_ID, logchar[i,1], logchar[i,2], dploy, lasar$Station_Description, 
+                 lasar$Depth_m, ".Rdata", sep = "_")
   fname <- gsub("/","_",fname) # not sure what this is for
   
   fname_audit <- paste(SubID, lasar$"LASAR_ID", logchar[i,1], logchar[i,2], dploy,  
@@ -281,7 +289,7 @@ for (i in seq_along(logchar$log)) {
   rm("aDD","aDMax","aDMin","aDMnH", "aDMnL", "audit_ind", "bath_dql", "date", "date_seq", "day", 
      "deploy_ind", "diff.a", "diff.d", "diff.r", "dploy", "dr_info", "dr_info_sub", "dr_obs", "fname", "fname_audit",
      "lasar", "max",  "mean", "min", "obs.dt", "obs.rt",  "pA", "pB", "qcad", "qcpd", "retrieve_ind", "start_ind",
-     "tmp.obs", "tmp_data")
+     "tmp.obs", "tmp_data", "grade")
   #   write.csv(tmp_data, file = paste(save_dir, fname, sep = "/"))
   #   write.csv(dr_info, file = paste(save_dir, fname_audit, sep = "/"))
 }
