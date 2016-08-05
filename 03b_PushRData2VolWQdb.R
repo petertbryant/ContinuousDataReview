@@ -31,7 +31,7 @@ save_path <- "//deqlead02/Vol_Data/salmon-drift/2015/CDO/"
 ###pen the ODBC connection to the database
 
 
-ch <- odbcConnect("VolWQdb", case="nochange")
+ch <- odbcConnectAccess("//deqlab1/wqm/Volunteer Monitoring/datamanagement/VolWQdb.mdb", case="nochange")
 odbcGetInfo(ch)
 sqlTypeInfo(ch)
 
@@ -103,19 +103,18 @@ allaudit.fileinfo$filepath <- as.character(allaudit.fileinfo$filepath)
 ###############  START For loop through logger files here
             ##
            #  
-for (file in 1:length(datafiles)) { 
-  fname <- datafiles[file]#"XXXX_99990_10429625_DO_20150420_Salmon R Hatchery_1_.Rdata"
+for (i in 1:length(datafiles)) { 
+  fname <- datafiles[i]#"XXXX_99990_10429625_DO_20150420_Salmon R Hatchery_1_.Rdata"
   load(fname)
-  print(paste0(file, ' of ', length(datafiles), ' is ' , fname))
+  print(paste0(i, ' of ', length(datafiles), ' is ' , fname))
   
   # Get continuous data file information from name
   fileinfo <- read.table(text = basename(fname) , sep = '_', as.is=TRUE, colClasses = "character")
   names(fileinfo) <- c('subid', 'lasar', 'LoggerID', 'charid', 'date', 'desc', 'depth_m','extension' )
   
   # Clean up logged result rows with poor DQL
-  tmp_data$r4calc <- tmp_data$r
   tmp_data$r4calc <- as.numeric(ifelse(is.na(tmp_data$rDQL) | tmp_data$rDQL == 'C'| tmp_data$rDQL == 'D',
-                            NA, tmp_data$r4calc))
+                            NA, tmp_data$r))
   
   # If there is not valid data for calculations, move on to tne next file
   if (sum(tmp_data$r4calc, na.rm= TRUE) == 0) next
@@ -329,11 +328,11 @@ for (file in 1:length(datafiles)) {
   #run SQL query to append to Activity table
   
   
-  if (file == 1) {
+  if (i == 1) {
     t_ConDatAct <- t_ConDataActivity # if it is the first one create a df
-  } else if (file > 1 && file < length(datafiles)){
+  } else if (i > 1 && i < length(datafiles)){
     t_ConDatAct <- rbind(t_ConDatAct,t_ConDataActivity) # add subsequent files to df above
-  } else if (file == length(datafiles)) {
+  } else if (i == length(datafiles)) {
     t_ConDatAct <- rbind(t_ConDatAct,t_ConDataActivity)
     save(t_ConDatAct, file = paste0(save_path, fileinfo$subid, 'Activity','.RData')) # this should have all the activities listed
     sqlDrop(ch, 'TempCnAct', errors = FALSE)
@@ -439,13 +438,13 @@ for (file in 1:length(datafiles)) {
   #
   ### oad data to database after rbinding all result dataframes for each file together
   
-  if (file == 1) {
+  if (i == 1) {
     t_CnRslt <- t_ConResult # if it is the first one create a df
-  } else if (file > 1 && file < length(datafiles)){
+  } else if (i > 1 && i < length(datafiles)){
     t_CnRslt <- rbind(t_CnRslt,t_ConResult) # add subsequent files to df above
-  } else if (file == length(datafiles)) {
+  } else if (i == length(datafiles)) {
     t_CnRslt <- rbind(t_CnRslt,t_ConResult)
-    save(t_CnRslt, file = paste0(save_path, fileinfo$subid, 'Results','.RData')) # this should have all the activities listed
+    save(t_CnRslt, i = paste0(save_path, fileinfo$subid, 'Results','.RData')) # this should have all the activities listed
     # Trim the Variable Type vector to just include fields from file to upload
     vt_Rslt <- vt_Result[which(names(vt_Result) %in% names(t_CnRslt))]
     sqlDrop(ch, 'TempCnRslt', errors = FALSE)
@@ -509,11 +508,11 @@ for (file in 1:length(datafiles)) {
   #
   ## oad Data into database after rbinding all the audit activity dataframes together
   
-  if (file == 1) {
+  if (i == 1) {
     t_CnAudAct <- t_CnAuditAct # if it is the first one create a df
-  } else if (file > 1 && file < length(datafiles)){
+  } else if (i > 1 && i < length(datafiles)){
     t_CnAudAct <- rbind(t_CnAudAct,t_CnAuditAct) # add subsequent files to df above
-  } else if (file == length(datafiles)) {
+  } else if (i == length(datafiles)) {
     t_CnAudAct <- rbind(t_CnAudAct,t_CnAuditAct)
     save(t_CnAudAct, file = paste0(save_path, fileinfo$subid, 'AuditActivity','.RData')) # this should have all the activities listed
     # Trim the Variable Type vector to just include fields from file to upload
@@ -563,11 +562,11 @@ for (file in 1:length(datafiles)) {
   ##oad Data into VolWQdb
   # Upload the audit activity information to a tempoary table in the database
   
-  if (file == 1) {
+  if (i == 1) {
     t_CnAudRslt <- t_CnAuditResult # if it is the first one create a df
-  } else if (file > 1 && file < length(datafiles)){
+  } else if (i > 1 && i < length(datafiles)){
     t_CnAudRslt <- rbind(t_CnAudRslt,t_CnAuditResult) # add subsequent files to df above
-  } else if (file == length(datafiles)) {
+  } else if (i == length(datafiles)) {
     t_CnAudRslt <- rbind(t_CnAudRslt,t_CnAuditResult)
     save(t_CnAudRslt, file = paste0(save_path, fileinfo$subid, 'AuditResult','.RData')) # this should have all the activities listed
     # Trim the Variable Type vector to just include fields from file to upload

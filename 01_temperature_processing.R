@@ -258,7 +258,13 @@ for (i in seq_along(logchar$log)) {
                                                'B'))))
   
   #Set pre and post deployment as NA for future clipping
-  tmp_data$final_grade <- ifelse(tmp_data$dbf & tmp_data$raf, tmp_data$rDQL, NA)
+  tmp_data$rDQL <- ifelse(tmp_data$dbf & tmp_data$raf, tmp_data$rDQL, NA)
+  
+  #Update the rDQL when the original file suggests a lower grade is appropriate
+  tmp_data[which(tmp_data$dql %in% c('B','C','D') & 
+             tmp_data$dql > tmp_data$rDQL), 
+           'rDQL'] <- tmp_data[which(tmp_data$dql %in% c('B','C','D') & 
+                                        tmp_data$dql > tmp_data$rDQL), 'dql']
   
   # anomaly check for provided dql not matching the calculated rDQL
   tmp_data$anomaly <- ifelse(is.na(tmp_data$dql) | is.na(tmp_data$rDQL), tmp_data$anomaly, 
