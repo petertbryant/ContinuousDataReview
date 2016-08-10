@@ -23,7 +23,9 @@ shinyServer(function(input, output, session) {
   })
   
   audit_data_reactive <- reactive({
-    fname_audit <- gsub(".Rdata","AUDIT_INFO.Rdata", paste0('data/', input$selectStation))
+    fname_audit <- gsub("[0-9]*[a-z]*[A-Z]*_.Rdata",
+                        "AUDIT_INFO.Rdata", 
+                        paste0('data/', input$selectStation))
     load(fname_audit)
     dr_info
     #ad <- read.csv(fname_audit, stringsAsFactors = FALSE)
@@ -64,7 +66,7 @@ shinyServer(function(input, output, session) {
   
   output$plot <- renderPlot({
     new_data <- DataUse()
-    new_data$comb_fac <- as.factor(paste(new_data$DQL, 
+    new_data$comb_fac <- as.factor(paste(new_data$rDQL, 
                                          new_data$anomaly))
     labs <- levels(new_data$comb_fac)
     cols = all_cols[names(all_cols) %in% labs]
@@ -72,7 +74,7 @@ shinyServer(function(input, output, session) {
     ltitle <- "Field Audit\nGrade and\nAnomaly Check"
     
     p <- ggplot(data = new_data) + 
-      geom_point(aes( x= DATETIME, y = TEMP, fill = comb_fac,
+      geom_point(aes( x= DATETIME, y = r, fill = comb_fac,
                       col = comb_fac), shape = 21, size = 3) +
       scale_fill_manual(values = flls,
                         name = ltitle,

@@ -236,7 +236,7 @@ for (i in seq_along(logchar$log)) {
   # if any of the anomolies are present report FALSE
   day$anomaly  <- (day$daily_diel > aDD | 
                      day$daily_max > aDMax | 
-                     day$daily_min > aDMin | 
+                     day$daily_min < aDMin | 
                      day$daily_mean < aDMnL | 
                      day$daily_mean > aDMnH)
   
